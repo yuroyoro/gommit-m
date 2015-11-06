@@ -121,7 +121,12 @@ func getResultCount(doc *goquery.Document) string {
 }
 
 func getTotalPages(doc *goquery.Document) string {
-	return doc.Find("ul.pagination li.next_page").Prev().Text()
+	pages := doc.Find("ul.pagination li.next_page").Prev().Text()
+	if pages == "" {
+		pages = "1"
+	}
+
+	return pages
 
 }
 
