@@ -70,56 +70,51 @@ func main() {
 	app.Run(os.Args)
 }
 
-func crawl(keyword string, page int) {
-	url := fmt.Sprintf("http://commit-m.minamijoyo.com/commits/search?keyword=%s&page=%d", url.QueryEscape(keyword), page)
+func buildUrl(keyword string, page int) string {
+	return fmt.Sprintf("http://commit-m.minamijoyo.com/commits/search?keyword=%s&page=%d", url.QueryEscape(keyword), page)
+}
 
+func crawl(url string) (QueryResult, error) {
+	commits := []*commit{}
 	doc, err := goquery.NewDocument(url)
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
+		return QueryResult{
+			Commits:     commits,
+			ResultCount: "",
+			TotalPages:  "",
+		}, err
 
-	commits := []*commit{}
-	doc.Find("table.table tr").Each(func(_ int, s *goquery.Selection) {
-		cells := []string{}
-		s.Find("td").Each(func(_ int, s *goquery.Selection) {
-			cells = append(cells, s.Text())
+	}
+	doc.Find("table.table tr").Each(func(_ int, line *goquery.Selection) {
+		cellsTxt := [3]string{"", "", ""}
+		hrefIndex := 0
+		cellsHref := [2]string{"", ""}
+		line.Find("td").Each(func(i int, s *goquery.Selection) {
+			cellsTxt[i] = s.Text()
 			s.Find("a").Each(func(_ int, s *goquery.Selection) {
 				href, _ := s.Attr("href")
 				if href != "" {
-					cells = append(cells, href)
+					cellsHref[hrefIndex] = href
+					hrefIndex += 1
 				}
 			})
 		})
-
-		if len(cells) < 5 {
-			return
-		}
-
 		commit := commit{
-			Message:   strings.TrimSpace(cells[0]),
-			Repo:      cells[1],
-			RepoURL:   cells[2],
-			Sha1:      cells[3],
-			CommitURL: cells[4],
+			Message:   strings.TrimSpace(cellsTxt[0]),
+			Repo:      cellsTxt[1],
+			RepoURL:   cellsHref[0],
+			Sha1:      cellsTxt[2],
+			CommitURL: cellsHref[1],
 		}
-		commits = append(commits, &commit)
+		if commit.Sha1 != "" {
+			commits = append(commits, &commit)
+		}
 	})
-
-	if len(commits) == 0 {
-		fmt.Println("No Results Found.")
-		fmt.Printf("  url: %s\n\n", url)
-		return
-	}
-
-	fmt.Printf("Search Result : %s : %d/%s pages\n",
-		getResultCount(doc),
-		page,
-		getTotalPages(doc),
-	)
-	fmt.Printf("  url: %s\n\n", url)
-	showResult(commits, keyword)
-
+	return QueryResult{
+		Commits:     commits,
+		ResultCount: getResultCount(doc),
+		TotalPages:  getTotalPages(doc),
+	}, nil
 }
 
 func getResultCount(doc *goquery.Document) string {
@@ -182,7 +177,19 @@ func maxURLWidth(commits []*commit) int {
 	return width
 }
 
-func showResult(commits []*commit, keyword string) {
+func showResult(result QueryResult, url, keyword string, page int) {
+	commits := result.Commits
+	if len(commits) == 0 {
+		fmt.Println("No Results Found.")
+		fmt.Printf("  url: %s\n\n", url)
+		return
+	}
+	fmt.Printf("Search Result : %s : %d/%s pages\n",
+		result.ResultCount,
+		page,
+		result.TotalPages,
+	)
+	fmt.Printf("  url: %s\n\n", url)
 
 	repoWidth := maxRepoWidth(commits)
 	repoFmt := fmt.Sprintf("%%-%ds", repoWidth)
