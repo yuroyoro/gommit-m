@@ -12,6 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/codegangsta/cli"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/fatih/color"
 )
@@ -133,7 +134,7 @@ func getTotalPages(doc *goquery.Document) string {
 func maxRepoWidth(commits []*commit) int {
 	width := 0
 	for _, c := range commits {
-		count := utf8.RuneCountInString(c.Repo)
+		count := runewidth.StringWidth(c.Message)
 		if count > width {
 			width = count
 		}
@@ -142,11 +143,9 @@ func maxRepoWidth(commits []*commit) int {
 }
 
 func maxMessageWidth(commits []*commit) int {
-	// TODO consider width of East Asian Characters.
-	// https://github.com/moznion/go-unicode-east-asian-width
 	width := 0
 	for _, c := range commits {
-		count := utf8.RuneCountInString(c.Message)
+		count := runewidth.StringWidth(c.Message)
 		if count > width {
 			width = count
 		}
@@ -175,7 +174,7 @@ func showResult(commits []*commit, keyword string) {
 
 	msgWidth := maxMessageWidth(commits)
 
-	fmt.Printf(" %s | %s | %s | message \n",
+	fmt.Fprintf(color.Output, " %s | %s | %s | message \n",
 		color.BlueString(repoFmt, "Repository"),
 		color.CyanString("%-7s", "sha1"),
 		fmt.Sprintf(urlFmt, "url"),
@@ -183,7 +182,7 @@ func showResult(commits []*commit, keyword string) {
 	fmt.Println(strings.Repeat("-", repoWidth+msgWidth+urlWidth+18))
 
 	for _, c := range commits {
-		fmt.Printf(" %s | %7s | %s | %s\n",
+		fmt.Fprintf(color.Output, " %s | %7s | %s | %s\n",
 			color.BlueString(repoFmt, c.Repo),
 			color.CyanString(c.Sha1),
 			fmt.Sprintf(urlFmt, c.CommitURL),
