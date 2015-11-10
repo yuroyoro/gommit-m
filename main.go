@@ -63,8 +63,13 @@ func main() {
 			cli.ShowAppHelp(c)
 			os.Exit(1)
 		}
-
-		crawl(keyword, page)
+		url := buildUrl(keyword, page)
+		result, err := crawl(url)
+		if c.Bool("json") {
+			showResultAsJson(result, err)
+		} else {
+			showResult(result, url, keyword, page)
+		}
 	}
 
 	app.Run(os.Args)
