@@ -134,7 +134,7 @@ func getTotalPages(doc *goquery.Document) string {
 func maxRepoWidth(commits []*commit) int {
 	width := 0
 	for _, c := range commits {
-		count := runewidth.StringWidth(c.Message)
+		count := runewidth.StringWidth(c.Repo)
 		if count > width {
 			width = count
 		}
