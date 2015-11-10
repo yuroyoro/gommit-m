@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -18,11 +19,22 @@ import (
 )
 
 type commit struct {
-	Repo      string
-	RepoURL   string
-	Sha1      string
-	CommitURL string
-	Message   string
+	Repo      string `json:"repo"`
+	RepoURL   string `json:"repo_url"`
+	Sha1      string `json:"sha1"`
+	CommitURL string `json:"commit_url"`
+	Message   string `json:"message"`
+}
+
+type QueryResult struct {
+	Commits     []*commit
+	ResultCount string
+	TotalPages  string
+}
+
+type JsonFormat struct {
+	Commits []*commit `json:"commits"`
+	Error   string    `json:"error"`
 }
 
 func main() {
@@ -31,6 +43,12 @@ func main() {
 	app.Usage = "Command Line Client for commit-m (http://commit-m.minamijoyo.com)"
 	app.ArgsUsage = "keyword [page]"
 	app.HideHelp = true
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "json",
+			Usage: "output as json",
+		},
+	}
 
 	app.Action = func(c *cli.Context) {
 		keyword := c.Args().First()
@@ -188,6 +206,18 @@ func showResult(commits []*commit, keyword string) {
 			fmt.Sprintf(urlFmt, c.CommitURL),
 			highlightWords(c.Message, keyword),
 		)
+	}
+}
+
+func showResultAsJson(result QueryResult, err error) {
+	enc := json.NewEncoder(os.Stdout)
+	if err != nil {
+		enc.Encode(JsonFormat{Commits: []*commit{}, Error: err.Error()})
+		return
+	}
+	err = enc.Encode(JsonFormat{Commits: result.Commits, Error: ""})
+	if err != nil {
+		fmt.Print(err)
 	}
 }
 
